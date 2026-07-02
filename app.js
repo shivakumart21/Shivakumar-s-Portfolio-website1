@@ -67,7 +67,12 @@ function initSupabase() {
     script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
     script.onload = () => {
         const key = sessionStorage.getItem('isAdmin') === 'true' ? SUPABASE_ADMIN_SECRET : SUPABASE_ANON_KEY;
-        supabase = window.supabase.createClient(SUPABASE_URL, key);
+        supabase = window.supabase.createClient(SUPABASE_URL, key, {
+            auth: {
+                persistSession: false,
+                autoRefreshToken: false
+            }
+        });
         console.log('✅ Supabase connected');
         loadArtworks();
     };
@@ -471,7 +476,12 @@ function initAdminAuth() {
             isAdmin = true;
             sessionStorage.setItem('isAdmin', 'true');
             if (supabase && window.supabase) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ADMIN_SECRET);
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ADMIN_SECRET, {
+                    auth: {
+                        persistSession: false,
+                        autoRefreshToken: false
+                    }
+                });
             }
             loginModal.classList.remove('active');
             adminBar.style.display = 'block';
