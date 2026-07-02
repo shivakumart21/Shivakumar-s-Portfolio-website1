@@ -639,9 +639,11 @@ function initUploadForm() {
             resetUploadForm();
             showToast('Artwork uploaded successfully!', 'success');
         } catch (err) {
-            uploadError.textContent = 'Upload failed. Please try again.';
-            // DEBUG LOG
-            if (supabase) supabase.from('artwork').insert([{ title: 'DEBUG_ERROR', image_url: err.message + ' | ' + JSON.stringify(err) }]);
+            let errorMsg = err.message || JSON.stringify(err) || 'Unknown error';
+            if (errorMsg === 'Failed to fetch' || errorMsg.includes('fetch')) {
+                errorMsg = 'Network Error: Cannot connect to Supabase. Check your adblocker or internet.';
+            }
+            uploadError.textContent = `Error: ${errorMsg}`;
             console.error(err);
         } finally {
             submitBtn.querySelector('.btn-text').style.display = 'inline';
