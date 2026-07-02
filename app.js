@@ -66,16 +66,12 @@ function initSupabase() {
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
     script.onload = () => {
-        const options = {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: {
                 persistSession: false,
                 autoRefreshToken: false
             }
-        };
-        if (sessionStorage.getItem('isAdmin') === 'true') {
-            options.global = { headers: { Authorization: `Bearer ${SUPABASE_ADMIN_SECRET}`, apikey: SUPABASE_ADMIN_SECRET } };
-        }
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, options);
+        });
         console.log('✅ Supabase connected');
         loadArtworks();
     };
@@ -147,41 +143,58 @@ async function uploadArtwork(title, category, description, file) {
     }
 
     try {
-        // Upload image to Supabase Storage
+        const uploadKey = sessionStorage.getItem('isAdmin') === 'true' ? SUPABASE_ADMIN_SECRET : SUPABASE_ANON_KEY;
+
+        // Upload image to Supabase Storage via native fetch
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
         const filePath = `${category}/${fileName}`;
 
-        const { data: uploadData, error: uploadError } = await supabaseClient.storage
-            .from(STORAGE_BUCKET)
-            .upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
+        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${filePath}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${uploadKey}`,
+                'apikey': uploadKey,
+                'cache-control': '3600',
+                'x-upsert': 'false',
+                'Content-Type': file.type || 'application/octet-stream'
+            },
+            body: file
+        });
 
-        if (uploadError) throw uploadError;
+        if (!uploadRes.ok) {
+            const err = await uploadRes.json();
+            throw new Error(err.message || 'Storage upload failed');
+        }
 
         // Get public URL
-        const { data: urlData } = supabaseClient.storage
-            .from(STORAGE_BUCKET)
-            .getPublicUrl(filePath);
-
-        const imageUrl = urlData.publicUrl;
+        const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
 
         // Format combined title
         const combinedTitle = `${category} ||| ${title} ||| ${description}`;
 
-        // Insert record into database
-        const { data, error } = await supabaseClient
-            .from('artwork')
-            .insert([{
+        // Insert record into database via native fetch
+        const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/artwork`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${uploadKey}`,
+                'apikey': uploadKey,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
                 title: combinedTitle,
                 image_url: imageUrl
-            }])
-            .select()
-            .single();
+            })
+        });
 
-        if (error) throw error;
+        if (!insertRes.ok) {
+            const err = await insertRes.json();
+            throw new Error(err.message || 'Database insert failed');
+        }
+
+        const dataArr = await insertRes.json();
+        const data = dataArr[0];
         
         return {
             id: data.id,
@@ -205,17 +218,28 @@ async function deleteArtwork(id, storagePath) {
     }
 
     try {
-        // Delete from database
-        const { error } = await supabaseClient
-            .from('artwork')
-            .delete()
-            .eq('id', id);
+        const uploadKey = sessionStorage.getItem('isAdmin') === 'true' ? SUPABASE_ADMIN_SECRET : SUPABASE_ANON_KEY;
 
-        if (error) throw error;
+        // Delete from database via native fetch
+        const deleteRes = await fetch(`${SUPABASE_URL}/rest/v1/artwork?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${uploadKey}`,
+                'apikey': uploadKey
+            }
+        });
 
-        // Delete from storage
+        if (!deleteRes.ok) throw new Error('Database delete failed');
+
+        // Delete from storage via native fetch
         if (storagePath) {
-            await supabaseClient.storage.from(STORAGE_BUCKET).remove([storagePath]);
+            await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${storagePath}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${uploadKey}`,
+                    'apikey': uploadKey
+                }
+            });
         }
 
         artworks = artworks.filter(a => a.id !== id);
@@ -483,12 +507,6 @@ function initAdminAuth() {
                     auth: {
                         persistSession: false,
                         autoRefreshToken: false
-                    },
-                    global: {
-                        headers: {
-                            Authorization: `Bearer ${SUPABASE_ADMIN_SECRET}`,
-                            apikey: SUPABASE_ADMIN_SECRET
-                        }
                     }
                 });
             }
