@@ -7,9 +7,9 @@
 // CONFIGURATION
 // ========================
 // IMPORTANT: Replace these with your actual Supabase credentials
+// IMPORTANT: Replace these with your actual Supabase credentials
 const SUPABASE_URL = 'https://kllujpcjngxbhqttyuom.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsbHVqcGNqbmd4YmhxdHR5dW9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5NzgyNjgsImV4cCI6MjA5ODU1NDI2OH0.aAe9O_qUhwgcRJitnQQmVhJTtxVjYNxvmbZV15QEh2E';
-const SUPABASE_ADMIN_SECRET = 'sb_secret_QK3bp-xk5sIa7SmbsFDjFw_RS_VvsPW';
 
 // Admin password (hashed for security)
 const ADMIN_PASSWORD = 'BasuArt@2026';
@@ -134,8 +134,6 @@ async function uploadArtwork(title, category, description, file) {
     }
 
     try {
-        const uploadKey = sessionStorage.getItem('isAdmin') === 'true' ? SUPABASE_ADMIN_SECRET : SUPABASE_ANON_KEY;
-
         // Upload image to Supabase Storage via native fetch
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
@@ -144,8 +142,8 @@ async function uploadArtwork(title, category, description, file) {
         const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${filePath}`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${uploadKey}`,
-                'apikey': uploadKey,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'apikey': SUPABASE_ANON_KEY,
                 'cache-control': '3600',
                 'x-upsert': 'false',
                 'Content-Type': file.type || 'application/octet-stream'
@@ -168,8 +166,8 @@ async function uploadArtwork(title, category, description, file) {
         const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/artwork`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${uploadKey}`,
-                'apikey': uploadKey,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'apikey': SUPABASE_ANON_KEY,
                 'Content-Type': 'application/json',
                 'Prefer': 'return=representation'
             },
@@ -209,14 +207,12 @@ async function deleteArtwork(id, storagePath) {
     }
 
     try {
-        const uploadKey = sessionStorage.getItem('isAdmin') === 'true' ? SUPABASE_ADMIN_SECRET : SUPABASE_ANON_KEY;
-
         // Delete from database via native fetch
         const deleteRes = await fetch(`${SUPABASE_URL}/rest/v1/artwork?id=eq.${id}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${uploadKey}`,
-                'apikey': uploadKey
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'apikey': SUPABASE_ANON_KEY
             }
         });
 
@@ -227,8 +223,8 @@ async function deleteArtwork(id, storagePath) {
             await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${storagePath}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${uploadKey}`,
-                    'apikey': uploadKey
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY
                 }
             });
         }
