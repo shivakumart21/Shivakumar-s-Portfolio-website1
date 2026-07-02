@@ -214,11 +214,17 @@ async function deleteArtwork(id, storagePath) {
 // LOADER
 // ========================
 function initLoader() {
-    window.addEventListener('load', () => {
+    const hideLoader = () => {
         setTimeout(() => {
             document.getElementById('loader').classList.add('hidden');
         }, 800);
-    });
+    };
+
+    if (document.readyState === 'complete') {
+        hideLoader();
+    } else {
+        window.addEventListener('load', hideLoader);
+    }
 }
 
 // ========================
