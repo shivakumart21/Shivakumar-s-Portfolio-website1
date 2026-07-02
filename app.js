@@ -41,8 +41,8 @@ let filteredArtworks = [];
 // INITIALIZATION
 // ========================
 document.addEventListener('DOMContentLoaded', () => {
-    initSupabase();
     initLoader();
+    initSupabase();
     initNavbar();
     initParticles();
     initGalleryFilters();
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAdminAuth();
     initUploadForm();
     initLightbox();
-    loadArtworks();
+    // loadArtworks() will be called by initSupabase once the script dynamically loads
     initScrollAnimations();
 });
 
@@ -58,14 +58,24 @@ document.addEventListener('DOMContentLoaded', () => {
 // SUPABASE
 // ========================
 function initSupabase() {
-    if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || !window.supabase) {
-        console.warn('⚠️ Supabase not configured or sdk missing.');
+    if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+        console.warn('⚠️ Supabase not configured. Please add your URL.');
         return;
     }
     
-    const key = sessionStorage.getItem('isAdmin') === 'true' ? SUPABASE_ADMIN_SECRET : SUPABASE_ANON_KEY;
-    supabase = window.supabase.createClient(SUPABASE_URL, key);
-    console.log('✅ Supabase connected');
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    script.onload = () => {
+        const key = sessionStorage.getItem('isAdmin') === 'true' ? SUPABASE_ADMIN_SECRET : SUPABASE_ANON_KEY;
+        supabase = window.supabase.createClient(SUPABASE_URL, key);
+        console.log('✅ Supabase connected');
+        loadArtworks();
+    };
+    script.onerror = () => {
+        console.error('⚠️ Failed to load Supabase SDK. The network connection might be blocked.');
+        showToast('Database connection failed. Please check your network or adblocker.', 'error');
+    };
+    document.head.appendChild(script);
 }
 
 // Utility to parse storage path from image url
