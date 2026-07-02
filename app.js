@@ -55,31 +55,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ========================
-// SUPABASE
+// SUPABASE (pure fetch, no SDK)
 // ========================
 function initSupabase() {
     if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
         console.warn('⚠️ Supabase not configured. Please add your URL.');
         return;
     }
-    
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    script.onload = () => {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: {
-                persistSession: false,
-                autoRefreshToken: false
-            }
-        });
-        console.log('✅ Supabase connected');
-        loadArtworks();
-    };
-    script.onerror = () => {
-        console.error('⚠️ Failed to load Supabase SDK. The network connection might be blocked.');
-        showToast('Database connection failed. Please check your network or adblocker.', 'error');
-    };
-    document.head.appendChild(script);
+    // No SDK needed — we use native fetch for all operations
+    supabaseClient = true; // flag that connection is ready
+    console.log('✅ Supabase connected (native fetch)');
+    loadArtworks();
 }
 
 // Utility to parse storage path from image url
@@ -99,12 +85,17 @@ async function loadArtworks() {
     }
 
     try {
-        const { data, error } = await supabaseClient
-            .from('artwork')
-            .select('*')
-            .order('created_at', { ascending: false });
-        
-        if (error) throw error;
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/artwork?select=*&order=created_at.desc`,
+            {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            }
+        );
+        if (!res.ok) throw new Error('Failed to load artworks');
+        const data = await res.json();
         
         // Parse category and description from title
         artworks = (data || []).map(item => {
@@ -502,14 +493,7 @@ function initAdminAuth() {
         if (pwd === ADMIN_PASSWORD) {
             isAdmin = true;
             sessionStorage.setItem('isAdmin', 'true');
-            if (window.supabase) {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-                    auth: {
-                        persistSession: false,
-                        autoRefreshToken: false
-                    }
-                });
-            }
+            // No SDK re-creation needed — raw fetch uses sessionStorage to pick key
             loginModal.classList.remove('active');
             adminBar.style.display = 'block';
             adminBtn.classList.add('logged-in');
@@ -544,11 +528,7 @@ function initAdminAuth() {
     logoutBtn.addEventListener('click', () => {
         isAdmin = false;
         sessionStorage.removeItem('isAdmin');
-        if (window.supabase) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-                auth: { persistSession: false, autoRefreshToken: false }
-            });
-        }
+        // No SDK re-creation needed — raw fetch uses sessionStorage to pick key
         adminBar.style.display = 'none';
         adminBtn.classList.remove('logged-in');
         renderGallery();
