@@ -12,16 +12,19 @@ CREATE TABLE IF NOT EXISTS artwork (
 
 -- =============================================
 -- 🚨 CRITICAL FIX FOR "ROW LEVEL SECURITY" ERROR 🚨
--- Run ALL THREE of these EXACT commands below in your Supabase SQL Editor
+-- Run these EXACT commands below in your Supabase SQL Editor
 -- to allow the public key to insert artworks and images:
 -- =============================================
 
+-- 1. Disable security on your custom artwork table
 ALTER TABLE artwork DISABLE ROW LEVEL SECURITY;
-ALTER TABLE storage.objects DISABLE ROW LEVEL SECURITY;
-ALTER TABLE storage.buckets DISABLE ROW LEVEL SECURITY;
 
--- =============================================
--- STORAGE BUCKET SETUP
+-- 2. Create an open security policy for your images bucket
+-- (We use policies here because Supabase locks the storage engine core)
+CREATE POLICY "Allow all public access to artworks bucket" 
+ON storage.objects FOR ALL TO public 
+USING (bucket_id = 'artworks') 
+WITH CHECK (bucket_id = 'artworks');
 -- Go to Storage in Supabase and:
 -- 1. Create a new bucket called "artworks"
 -- 2. Set it to PUBLIC.
