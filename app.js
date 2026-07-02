@@ -30,7 +30,7 @@ const CATEGORY_LABELS = {
 // ========================
 // STATE
 // ========================
-let supabase = null;
+let supabaseClient = null;
 let isAdmin = false;
 let artworks = [];
 let currentFilter = 'all';
@@ -67,7 +67,7 @@ function initSupabase() {
     script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
     script.onload = () => {
         const key = sessionStorage.getItem('isAdmin') === 'true' ? SUPABASE_ADMIN_SECRET : SUPABASE_ANON_KEY;
-        supabase = window.supabase.createClient(SUPABASE_URL, key, {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, key, {
             auth: {
                 persistSession: false,
                 autoRefreshToken: false
@@ -94,13 +94,13 @@ function getStoragePathFromUrl(url) {
 }
 
 async function loadArtworks() {
-    if (!supabase) {
+    if (!supabaseClient) {
         console.error('Supabase client not initialized.');
         return;
     }
 
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('artwork')
             .select('*')
             .order('created_at', { ascending: false });
@@ -139,7 +139,7 @@ async function loadArtworks() {
 }
 
 async function uploadArtwork(title, category, description, file) {
-    if (!supabase) {
+    if (!supabaseClient) {
         throw new Error('Supabase not connected');
     }
 
@@ -149,7 +149,7 @@ async function uploadArtwork(title, category, description, file) {
         const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
         const filePath = `${category}/${fileName}`;
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
             .from(STORAGE_BUCKET)
             .upload(filePath, file, {
                 cacheControl: '3600',
@@ -159,7 +159,7 @@ async function uploadArtwork(title, category, description, file) {
         if (uploadError) throw uploadError;
 
         // Get public URL
-        const { data: urlData } = supabase.storage
+        const { data: urlData } = supabaseClient.storage
             .from(STORAGE_BUCKET)
             .getPublicUrl(filePath);
 
@@ -169,7 +169,7 @@ async function uploadArtwork(title, category, description, file) {
         const combinedTitle = `${category} ||| ${title} ||| ${description}`;
 
         // Insert record into database
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('artwork')
             .insert([{
                 title: combinedTitle,
@@ -196,14 +196,14 @@ async function uploadArtwork(title, category, description, file) {
 }
 
 async function deleteArtwork(id, storagePath) {
-    if (!supabase) {
+    if (!supabaseClient) {
         console.error('Supabase not connected');
         return;
     }
 
     try {
         // Delete from database
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('artwork')
             .delete()
             .eq('id', id);
@@ -212,7 +212,7 @@ async function deleteArtwork(id, storagePath) {
 
         // Delete from storage
         if (storagePath) {
-            await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+            await supabaseClient.storage.from(STORAGE_BUCKET).remove([storagePath]);
         }
 
         artworks = artworks.filter(a => a.id !== id);
@@ -475,8 +475,8 @@ function initAdminAuth() {
         if (pwd === ADMIN_PASSWORD) {
             isAdmin = true;
             sessionStorage.setItem('isAdmin', 'true');
-            if (supabase && window.supabase) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ADMIN_SECRET, {
+            if (supabaseClient && window.supabase) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ADMIN_SECRET, {
                     auth: {
                         persistSession: false,
                         autoRefreshToken: false
@@ -517,8 +517,8 @@ function initAdminAuth() {
     logoutBtn.addEventListener('click', () => {
         isAdmin = false;
         sessionStorage.removeItem('isAdmin');
-        if (supabase && window.supabase) {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        if (supabaseClient && window.supabase) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
         adminBar.style.display = 'none';
         adminBtn.classList.remove('logged-in');
@@ -629,7 +629,7 @@ function initUploadForm() {
 
         try {
             const artwork = await uploadArtwork(title, category, description, file);
-            if (supabase) {
+            if (supabaseClient) {
                 artworks.unshift(artwork);
             }
             renderGallery();
