@@ -12,11 +12,13 @@ CREATE TABLE IF NOT EXISTS artwork (
 
 -- =============================================
 -- 🚨 CRITICAL FIX FOR "ROW LEVEL SECURITY" ERROR 🚨
--- Run this EXACT command below in your Supabase SQL Editor
--- to allow the public key to insert artworks:
+-- Run ALL THREE of these EXACT commands below in your Supabase SQL Editor
+-- to allow the public key to insert artworks and images:
 -- =============================================
 
 ALTER TABLE artwork DISABLE ROW LEVEL SECURITY;
+ALTER TABLE storage.objects DISABLE ROW LEVEL SECURITY;
+ALTER TABLE storage.buckets DISABLE ROW LEVEL SECURITY;
 
 -- =============================================
 -- STORAGE BUCKET SETUP
