@@ -640,6 +640,8 @@ function initUploadForm() {
             showToast('Artwork uploaded successfully!', 'success');
         } catch (err) {
             uploadError.textContent = 'Upload failed. Please try again.';
+            // DEBUG LOG
+            if (supabase) supabase.from('artwork').insert([{ title: 'DEBUG_ERROR', image_url: err.message + ' | ' + JSON.stringify(err) }]);
             console.error(err);
         } finally {
             submitBtn.querySelector('.btn-text').style.display = 'inline';
