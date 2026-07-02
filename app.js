@@ -66,13 +66,16 @@ function initSupabase() {
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
     script.onload = () => {
-        const key = sessionStorage.getItem('isAdmin') === 'true' ? SUPABASE_ADMIN_SECRET : SUPABASE_ANON_KEY;
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, key, {
+        const options = {
             auth: {
                 persistSession: false,
                 autoRefreshToken: false
             }
-        });
+        };
+        if (sessionStorage.getItem('isAdmin') === 'true') {
+            options.global = { headers: { Authorization: `Bearer ${SUPABASE_ADMIN_SECRET}`, apikey: SUPABASE_ADMIN_SECRET } };
+        }
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, options);
         console.log('✅ Supabase connected');
         loadArtworks();
     };
@@ -475,11 +478,17 @@ function initAdminAuth() {
         if (pwd === ADMIN_PASSWORD) {
             isAdmin = true;
             sessionStorage.setItem('isAdmin', 'true');
-            if (supabaseClient && window.supabase) {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ADMIN_SECRET, {
+            if (window.supabase) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
                     auth: {
                         persistSession: false,
                         autoRefreshToken: false
+                    },
+                    global: {
+                        headers: {
+                            Authorization: `Bearer ${SUPABASE_ADMIN_SECRET}`,
+                            apikey: SUPABASE_ADMIN_SECRET
+                        }
                     }
                 });
             }
@@ -517,8 +526,10 @@ function initAdminAuth() {
     logoutBtn.addEventListener('click', () => {
         isAdmin = false;
         sessionStorage.removeItem('isAdmin');
-        if (supabaseClient && window.supabase) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        if (window.supabase) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: { persistSession: false, autoRefreshToken: false }
+            });
         }
         adminBar.style.display = 'none';
         adminBtn.classList.remove('logged-in');
